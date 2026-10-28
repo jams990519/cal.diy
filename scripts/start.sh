@@ -18,6 +18,12 @@ fi
 set -x
 
 scripts/wait-for-it.sh ${DATABASE_HOST} -- echo "database is up"
+# Recuperación de una migración fallida (solo si existe PRISMA_RECUPERAR_MIGRACION):
+# borra índices inválidos y marca la migración como revertida para que se reintente.
+if [ -n "$PRISMA_RECUPERAR_MIGRACION" ]; then
+  npx prisma db execute --file /calcom/scripts/reparar-indices.sql --schema /calcom/packages/prisma/schema.prisma || true
+  npx prisma migrate resolve --rolled-back "$PRISMA_RECUPERAR_MIGRACION" --schema /calcom/packages/prisma/schema.prisma || true
+fi
 npx prisma migrate deploy --schema /calcom/packages/prisma/schema.prisma
 npx ts-node --transpile-only /calcom/scripts/seed-app-store.ts
 yarn start
